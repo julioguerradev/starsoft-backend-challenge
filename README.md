@@ -65,7 +65,9 @@ cd starsoft-backend-challenge
 docker-compose up --build
 ```
 
-A aplicação estará disponível em: **http://localhost:3000/api**
+A aplicação estará disponível em:
+- **API**: http://localhost:3000/api
+- **Swagger (documentação)**: http://localhost:3000/api/api-docs
 
 ### Popular Dados Iniciais
 
@@ -172,6 +174,8 @@ const existingReservation = await prisma.reservation.findFirst({
 - Mensagens são persistentes e sobrevivem a restart
 
 ## Endpoints da API
+
+> **Documentação interativa**: Acesse **http://localhost:3000/api/api-docs** para testar os endpoints via Swagger UI.
 
 ### Sessões
 

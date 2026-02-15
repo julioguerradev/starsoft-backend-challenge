@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Logger,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { SessionsService } from './sessions.service';
 import { CreateSessionDto } from './dto/create-session.dto';
 import {
@@ -14,6 +15,7 @@ import {
   SeatResponseDto,
 } from './dto/session-response.dto';
 
+@ApiTags('Sessões')
 @Controller('sessions')
 export class SessionsController {
   private readonly logger = new Logger(SessionsController.name);
@@ -21,6 +23,9 @@ export class SessionsController {
   constructor(private readonly sessionsService: SessionsService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Criar sessão de cinema' })
+  @ApiResponse({ status: 201, description: 'Sessão criada com sucesso' })
+  @ApiResponse({ status: 400, description: 'Dados inválidos' })
   async create(
     @Body() createSessionDto: CreateSessionDto,
   ): Promise<SessionResponseDto> {
@@ -31,12 +36,18 @@ export class SessionsController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'Listar todas as sessões' })
+  @ApiResponse({ status: 200, description: 'Lista de sessões' })
   async findAll(): Promise<SessionResponseDto[]> {
     this.logger.log('GET /sessions - Listar todas as sessões');
     return this.sessionsService.findAll();
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Obter sessão por ID' })
+  @ApiParam({ name: 'id', description: 'ID da sessão' })
+  @ApiResponse({ status: 200, description: 'Sessão encontrada' })
+  @ApiResponse({ status: 404, description: 'Sessão não encontrada' })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<SessionResponseDto> {
@@ -45,6 +56,10 @@ export class SessionsController {
   }
 
   @Get(':id/seats')
+  @ApiOperation({ summary: 'Listar assentos disponíveis (tempo real)' })
+  @ApiParam({ name: 'id', description: 'ID da sessão' })
+  @ApiResponse({ status: 200, description: 'Lista de assentos disponíveis' })
+  @ApiResponse({ status: 404, description: 'Sessão não encontrada' })
   async getAvailableSeats(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<SeatResponseDto[]> {
