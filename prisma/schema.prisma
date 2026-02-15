@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id           Int           @id @default(autoincrement())
+  movieName    String        @map("movie_name")
+  roomNumber   String        @map("room_number")
+  startTime    DateTime      @map("start_time")
+  price        Decimal       @db.Decimal(10, 2)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  seats        Seat[]
+  reservations Reservation[]
+  sales        Sale[]
+
+  @@map("sessions")
+}
+
+model Seat {
+  id           Int           @id @default(autoincrement())
+  sessionId    Int           @map("session_id")
+  seatNumber   String        @map("seat_number")
+  row          String
+  status       SeatStatus    @default(AVAILABLE)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  session      Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+  sales        Sale[]
+
+  @@unique([sessionId, seatNumber])
+  @@index([sessionId, status])
+  @@map("seats")
+}
+
+enum SeatStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+}
+
+model Reservation {
+  id        Int               @id @default(autoincrement())
+  sessionId Int               @map("session_id")
+  seatId    Int               @map("seat_id")
+  userId    String            @map("user_id")
+  expiresAt DateTime          @map("expires_at")
+  status    ReservationStatus @default(PENDING)
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+  session   Session           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  seat      Seat              @relation(fields: [seatId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt, status])
+  @@index([userId])
+  @@index([sessionId])
+  @@map("reservations")
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  EXPIRED
+  CANCELLED
+}
+
+model Sale {
+  id        Int      @id @default(autoincrement())
+  sessionId Int      @map("session_id")
+  seatId    Int      @map("seat_id")
+  userId    String   @map("user_id")
+  price     Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  seat      Seat     @relation(fields: [seatId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@map("sales")
+}

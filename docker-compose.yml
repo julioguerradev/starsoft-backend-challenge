@@ -1,0 +1,96 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: tickets-app
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgresql://ticketsuser:ticketspass@postgres:5432/ticketsdb
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_LOCK_TTL: 5000
+      RABBITMQ_URL: amqp://ticketsuser:ticketspass@rabbitmq:5672
+      RESERVATION_EXPIRATION_SECONDS: 30
+      LOG_LEVEL: debug
+    volumes:
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - /app/node_modules
+    command: npm run start:dev
+    networks:
+      - tickets-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: tickets-postgres
+    environment:
+      POSTGRES_USER: ticketsuser
+      POSTGRES_PASSWORD: ticketspass
+      POSTGRES_DB: ticketsdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketsuser -d ticketsdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tickets-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: tickets-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - tickets-network
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: tickets-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ticketsuser
+      RABBITMQ_DEFAULT_PASS: ticketspass
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - tickets-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  tickets-network:
+    driver: bridge
