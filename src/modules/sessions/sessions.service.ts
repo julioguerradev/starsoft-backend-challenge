@@ -130,6 +130,67 @@ export class SessionsService {
     }
   }
 
+  async update(
+    id: number,
+    updateSessionDto: {
+      movieName?: string;
+      roomNumber?: string;
+      startTime?: string;
+      price?: number;
+    },
+  ): Promise<SessionResponseDto> {
+    this.logger.log(`Atualizando sessão: ID ${id}`);
+
+    const session = await this.prisma.session.findUnique({
+      where: { id },
+    });
+
+    if (!session) {
+      throw new NotFoundException(`Sessão com ID ${id} não encontrada`);
+    }
+
+    if (updateSessionDto.startTime) {
+      const startTime = new Date(updateSessionDto.startTime);
+      if (startTime <= new Date()) {
+        throw new BadRequestException(
+          'A data/hora da sessão deve ser futura',
+        );
+      }
+    }
+
+    try {
+      const data: Record<string, unknown> = {};
+      if (updateSessionDto.movieName !== undefined)
+        data.movieName = updateSessionDto.movieName;
+      if (updateSessionDto.roomNumber !== undefined)
+        data.roomNumber = updateSessionDto.roomNumber;
+      if (updateSessionDto.startTime !== undefined)
+        data.startTime = new Date(updateSessionDto.startTime);
+      if (updateSessionDto.price !== undefined) data.price = updateSessionDto.price;
+
+      const updatedSession = await this.prisma.session.update({
+        where: { id },
+        data,
+        include: {
+          seats: {
+            select: {
+              id: true,
+              seatNumber: true,
+              row: true,
+              status: true,
+            },
+          },
+        },
+      });
+
+      this.logger.log(`Sessão atualizada com sucesso: ID ${id}`);
+      return this.mapToResponseDto(updatedSession);
+    } catch (error) {
+      this.logger.error(`Erro ao atualizar sessão ${id}`, error.stack);
+      throw error;
+    }
+  }
+
   async getAvailableSeats(sessionId: number): Promise<SeatResponseDto[]> {
     this.logger.log(`Buscando assentos disponíveis da sessão: ID ${sessionId}`);
 

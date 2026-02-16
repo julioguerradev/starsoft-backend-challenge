@@ -10,6 +10,7 @@ import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { RedisService } from '../../infrastructure/redis/redis.service';
 import { RabbitMQService } from '../../infrastructure/rabbitmq/rabbitmq.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
+import { AddSeatsToReservationDto } from './dto/add-seats-reservation.dto';
 import {
   ReservationResponseDto,
   CreateReservationResponseDto,
@@ -221,6 +222,183 @@ export class ReservationsService {
       }
 
       this.logger.error('Erro ao criar reserva', error.stack);
+      throw error;
+    }
+  }
+
+  async addSeats(
+    reservationId: number,
+    userId: string,
+    addSeatsDto: AddSeatsToReservationDto,
+  ): Promise<CreateReservationResponseDto> {
+    const { seatIds } = addSeatsDto;
+
+    this.logger.log(
+      `Adicionando assentos à reserva ${reservationId}: ${seatIds.join(',')}`,
+    );
+
+    const originalReservation = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+    });
+
+    if (!originalReservation) {
+      throw new NotFoundException(
+        `Reserva com ID ${reservationId} não encontrada`,
+      );
+    }
+
+    if (originalReservation.userId !== userId) {
+      throw new BadRequestException(
+        'Esta reserva não pertence ao usuário informado',
+      );
+    }
+
+    if (originalReservation.status !== 'PENDING') {
+      throw new BadRequestException(
+        `Reserva não está pendente. Status: ${originalReservation.status}`,
+      );
+    }
+
+    if (originalReservation.expiresAt < new Date()) {
+      throw new BadRequestException('A reserva expirou');
+    }
+
+    const sessionId = originalReservation.sessionId;
+    const expiresAt = originalReservation.expiresAt;
+
+    const existingSeatIds = await this.prisma.reservation
+      .findMany({
+        where: {
+          sessionId,
+          userId,
+          status: 'PENDING',
+          expiresAt,
+        },
+        select: { seatId: true },
+      })
+      .then((r) => r.map((x) => x.seatId));
+
+    const newSeatIds = seatIds.filter((id) => !existingSeatIds.includes(id));
+    if (newSeatIds.length === 0) {
+      throw new BadRequestException('Todos os assentos já estão na reserva');
+    }
+
+    const reservations: ReservationResponseDto[] = [];
+    const failedSeats: number[] = [];
+    const locksAcquired: string[] = [];
+
+    try {
+      for (const seatId of newSeatIds) {
+        const lockKey = `seat:lock:${sessionId}:${seatId}`;
+        const lockAcquired = await this.redis.acquireLock(lockKey, 5000, 3, 100);
+
+        if (!lockAcquired) {
+          failedSeats.push(seatId);
+          continue;
+        }
+        locksAcquired.push(lockKey);
+
+        try {
+          const seat = await this.prisma.seat.findUnique({
+            where: { id: seatId },
+          });
+          if (!seat || seat.status !== 'AVAILABLE') {
+            failedSeats.push(seatId);
+            await this.redis.releaseLock(lockKey);
+            locksAcquired.pop();
+            continue;
+          }
+
+          const reservation = await this.prisma.$transaction(async (tx) => {
+            await tx.seat.update({
+              where: { id: seatId },
+              data: { status: 'RESERVED' },
+            });
+            return tx.reservation.create({
+              data: {
+                sessionId,
+                seatId,
+                userId,
+                expiresAt,
+                status: 'PENDING',
+              },
+              include: {
+                seat: {
+                  select: {
+                    seatNumber: true,
+                    row: true,
+                  },
+                },
+              },
+            });
+          });
+
+          reservations.push({
+            id: reservation.id,
+            sessionId: reservation.sessionId,
+            seatId: reservation.seatId,
+            userId: reservation.userId,
+            status: reservation.status,
+            expiresAt: reservation.expiresAt,
+            createdAt: reservation.createdAt,
+            seat: reservation.seat,
+          });
+        } finally {
+          await this.redis.releaseLock(lockKey);
+        }
+      }
+
+      if (reservations.length > 0) {
+        const event: ReservationCreatedEvent = {
+          reservationIds: reservations.map((r) => r.id),
+          sessionId,
+          userId,
+          seatIds: reservations.map((r) => r.seatId),
+          expiresAt,
+          createdAt: new Date(),
+        };
+        await this.rabbitmq.publishReservationCreated(event);
+      }
+
+      const allReservations = await this.prisma.reservation.findMany({
+        where: { sessionId, userId, status: 'PENDING', expiresAt },
+        include: {
+          seat: {
+            select: {
+              seatNumber: true,
+              row: true,
+            },
+          },
+        },
+      });
+
+      const result = allReservations.map((r) => ({
+        id: r.id,
+        sessionId: r.sessionId,
+        seatId: r.seatId,
+        userId: r.userId,
+        status: r.status,
+        expiresAt: r.expiresAt,
+        createdAt: r.createdAt,
+        seat: r.seat,
+      }));
+
+      return {
+        reservations: result,
+        expiresAt,
+        message:
+          reservations.length > 0
+            ? `${reservations.length} assento(s) adicionado(s). Total: ${result.length} assento(s) na reserva.`
+            : `Nenhum assento adicionado. ${failedSeats.length} indisponível(is).`,
+      };
+    } catch (error) {
+      for (const lockKey of locksAcquired) {
+        try {
+          await this.redis.releaseLock(lockKey);
+        } catch {
+          // ignore
+        }
+      }
       throw error;
     }
   }

@@ -67,9 +67,11 @@ async function bootstrap() {
   logger.log('📚 Endpoints disponíveis:');
   logger.log('   - GET    /api/sessions');
   logger.log('   - POST   /api/sessions');
+  logger.log('   - PATCH  /api/sessions/:id');
   logger.log('   - GET    /api/sessions/:id');
   logger.log('   - GET    /api/sessions/:id/seats');
   logger.log('   - POST   /api/reservations');
+  logger.log('   - PATCH  /api/reservations/:id/seats');
   logger.log('   - GET    /api/reservations/:id');
   logger.log('   - DELETE /api/reservations/:id');
   logger.log('   - GET    /api/reservations/user/:userId');

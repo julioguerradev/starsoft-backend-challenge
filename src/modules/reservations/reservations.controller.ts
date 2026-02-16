@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
   Param,
@@ -12,6 +13,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ReservationsService } from './reservations.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
+import { AddSeatsToReservationDto } from './dto/add-seats-reservation.dto';
 import {
   ReservationResponseDto,
   CreateReservationResponseDto,
@@ -26,7 +28,10 @@ export class ReservationsController {
 
   @Post()
   @ApiOperation({ summary: 'Criar reserva de assento(s)' })
-  @ApiResponse({ status: 201, description: 'Reserva criada (válida por 30 segundos)' })
+  @ApiResponse({
+    status: 201,
+    description: 'Reserva criada (válida por 30 segundos)',
+  })
   @ApiResponse({ status: 404, description: 'Sessão não encontrada' })
   @ApiResponse({ status: 409, description: 'Assento indisponível' })
   async create(
@@ -36,6 +41,22 @@ export class ReservationsController {
       `POST /reservations - Criar reserva para sessão ${createReservationDto.sessionId}`,
     );
     return this.reservationsService.create(createReservationDto);
+  }
+
+  @Patch(':id/seats')
+  @ApiOperation({ summary: 'Adicionar assentos a uma reserva existente' })
+  @ApiParam({ name: 'id', description: 'ID da reserva' })
+  @ApiQuery({ name: 'userId', required: true })
+  @ApiResponse({ status: 200, description: 'Assentos adicionados à reserva' })
+  @ApiResponse({ status: 404, description: 'Reserva não encontrada' })
+  @ApiResponse({ status: 400, description: 'Reserva expirada ou inválida' })
+  async addSeats(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('userId') userId: string,
+    @Body() addSeatsDto: AddSeatsToReservationDto,
+  ): Promise<CreateReservationResponseDto> {
+    this.logger.log(`PATCH /reservations/${id}/seats - Adicionar assentos`);
+    return this.reservationsService.addSeats(id, userId, addSeatsDto);
   }
 
   @Get('user/:userId')

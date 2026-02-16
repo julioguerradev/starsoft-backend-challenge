@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   ParseIntPipe,
@@ -10,6 +11,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { SessionsService } from './sessions.service';
 import { CreateSessionDto } from './dto/create-session.dto';
+import { UpdateSessionDto } from './dto/update-session.dto';
 import {
   SessionResponseDto,
   SeatResponseDto,
@@ -41,6 +43,20 @@ export class SessionsController {
   async findAll(): Promise<SessionResponseDto[]> {
     this.logger.log('GET /sessions - Listar todas as sessões');
     return this.sessionsService.findAll();
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Atualizar sessão (campos parciais)' })
+  @ApiParam({ name: 'id', description: 'ID da sessão' })
+  @ApiResponse({ status: 200, description: 'Sessão atualizada' })
+  @ApiResponse({ status: 404, description: 'Sessão não encontrada' })
+  @ApiResponse({ status: 400, description: 'Dados inválidos' })
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateSessionDto: UpdateSessionDto,
+  ): Promise<SessionResponseDto> {
+    this.logger.log(`PATCH /sessions/${id} - Atualizar sessão`);
+    return this.sessionsService.update(id, updateSessionDto);
   }
 
   @Get(':id')

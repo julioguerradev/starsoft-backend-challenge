@@ -180,20 +180,16 @@ const existingReservation = await prisma.reservation.findFirst({
 ### Sessões
 
 ```http
-# Criar sessão
+# Criar sessão (exemplo completo no bloco abaixo)
 POST /api/sessions
+
+# Atualizar sessão (campos opcionais)
+PATCH /api/sessions/:id
 Content-Type: application/json
 
 {
-  "movieName": "Avatar 3",
-  "roomNumber": "Sala 5",
-  "startTime": "2026-02-20T19:00:00.000Z",
-  "price": 30.00,
-  "seats": [
-    { "seatNumber": "A1", "row": "A" },
-    { "seatNumber": "A2", "row": "A" },
-    ...
-  ]
+  "movieName": "Novo Nome do Filme",
+  "price": 30.00
 }
 
 # Listar todas as sessões
@@ -239,6 +235,14 @@ Response:
 
 # Consultar reserva
 GET /api/reservations/:id
+
+# Adicionar assentos a reserva existente
+PATCH /api/reservations/:id/seats?userId=user123
+Content-Type: application/json
+
+{
+  "seatIds": [3, 4]
+}
 
 # Cancelar reserva
 DELETE /api/reservations/:id?userId=user123
