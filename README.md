@@ -365,46 +365,41 @@ GET /api/sales
    - Integration tests para fluxos críticos
    - E2E tests para cenários de concorrência
 
-2. **Documentação Swagger/OpenAPI**
-   - Endpoint /api-docs acessível
-   - Exemplos de requisição/resposta
-   - Schemas validados
-
-3. **Observabilidade**
-   - Métricas com Prometheus
-   - Tracing distribuído com Jaeger
-   - Dashboard com Grafana
+2. **Observabilidade**
+   - Métricas
+   - Tracing distribuído
+   - Dashboard
 
 ### Médio Prazo
 
-4. **Dead Letter Queue**
+3. **Dead Letter Queue**
    - Mensagens problemáticas isoladas
    - Retry com backoff exponencial
    - Alertas para falhas recorrentes
 
-5. **Autenticação e Autorização**
+4. **Autenticação e Autorização**
    - JWT authentication
    - RBAC (Customer, Admin, Manager)
    - API Keys para integrações
 
-6. **Cache de Queries**
+5. **Cache de Queries**
    - Cache de sessões disponíveis
    - Cache de disponibilidade de assentos
    - Invalidação inteligente
 
 ### Longo Prazo
 
-7. **Escala Horizontal**
+6. **Escala Horizontal**
    - Redis Cluster para locks
    - PostgreSQL Read Replicas
    - Load balancer
 
-8. **Multi-tenancy**
+7. **Multi-tenancy**
    - Suporte a múltiplas redes de cinema
    - Isolamento de dados
    - Customização por tenant
 
-9. **Notificações**
+8. **Notificações**
    - Email de confirmação de compra
    - SMS de lembrete da sessão
    - Push notifications mobile
@@ -494,11 +489,3 @@ Monitore:
 Este sistema demonstra uma implementação robusta de controle de concorrência distribuído, garantindo que nenhum assento seja vendido duas vezes mesmo sob alta carga. As escolhas técnicas foram feitas priorizando confiabilidade, escalabilidade e manutenibilidade.
 
 O código segue princípios SOLID, utiliza logging estruturado, tratamento adequado de erros e está preparado para escalar horizontalmente quando necessário.
-
-## Autor
-
-Desenvolvido como parte do desafio técnico para posição de Desenvolvedor Back-End.
-
-## Licença
-
-UNLICENSED - Apenas para fins de avaliação técnica.

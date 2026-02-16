@@ -1,12 +1,3 @@
-/**
- * Script de teste de concorrência para o sistema de reservas
- * 
- * Este script simula múltiplos usuários tentando reservar o mesmo assento simultaneamente
- * para validar o controle de concorrência com Redis locks.
- * 
- * Uso: node test-concurrency.js
- */
-
 const API_URL = 'http://localhost:3000/api';
 
 async function createSession() {
@@ -60,16 +51,12 @@ async function reserveSeat(sessionId, seatId, userId) {
 async function testConcurrency() {
   console.log('\n🎬 === TESTE DE CONCORRÊNCIA ===\n');
 
-  // 1. Criar sessão
   const session = await createSession();
   const targetSeatId = session.seats[0].id;
 
   console.log(`\n🎯 Assento alvo: ${session.seats[0].seatNumber} (ID: ${targetSeatId})`);
   console.log(`\n⏳ Aguardando 2 segundos...`);
   await new Promise(resolve => setTimeout(resolve, 2000));
-
-  // 2. Simular 10 usuários tentando reservar o mesmo assento simultaneamente
-  console.log(`\n🚀 Iniciando 10 requisições simultâneas...\n`);
   
   const promises = Array.from({ length: 10 }, (_, i) =>
     reserveSeat(session.id, targetSeatId, `user${i + 1}`)
@@ -77,7 +64,6 @@ async function testConcurrency() {
 
   const results = await Promise.all(promises);
 
-  // 3. Analisar resultados
   const successful = results.filter(r => r.success).length;
   const failed = results.filter(r => !r.success).length;
 
@@ -91,7 +77,6 @@ async function testConcurrency() {
     console.log(`\n❌ TESTE FALHOU! ${successful} reservas foram criadas (esperado: 1)`);
   }
 
-  // 4. Verificar disponibilidade do assento
   console.log(`\n🔍 Verificando disponibilidade dos assentos...`);
   const seatsResponse = await fetch(`${API_URL}/sessions/${session.id}/seats`);
   const availableSeats = await seatsResponse.json();
@@ -101,7 +86,7 @@ async function testConcurrency() {
   return { successful, failed };
 }
 
-// Executar teste
+
 testConcurrency()
   .then(() => {
     console.log(`\n✅ Teste concluído!\n`);
